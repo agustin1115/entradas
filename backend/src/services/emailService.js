@@ -1,6 +1,12 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttachments }) {
   const ticketCount = tickets.length;
@@ -32,8 +38,8 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
 
     <div style="background:#fffbea;border:1px solid #f0d060;border-radius:8px;padding:14px;margin-bottom:24px;">
       <p style="margin:0;font-size:13px;color:#7a6000;">
-        <strong>Instrucciones:</strong> Presentá cada código QR en la entrada del evento. 
-        Cada QR es de un solo uso y es personal e intransferible. 
+        <strong>Instrucciones:</strong> Presentá cada código QR en la entrada del evento.
+        Cada QR es de un solo uso y es personal e intransferible.
         También encontrás los PDFs adjuntos como respaldo.
       </p>
     </div>
@@ -45,14 +51,14 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
 </body>
 </html>`;
 
-  await resend.emails.send({
-    from: process.env.RESEND_FROM,
+  await transporter.sendMail({
+    from: `"Sistema de Entradas" <${process.env.GMAIL_USER}>`,
     to,
     subject: `Tus ${plural} (${ticketCount}) — ${buyerName}`,
     html,
     attachments: pdfAttachments.map((pdf, i) => ({
       filename: `entrada-${i + 1}.pdf`,
-      content: pdf.toString('base64'),
+      content: pdf,
     })),
   });
 }

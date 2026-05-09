@@ -1,6 +1,14 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttachments }) {
   const ticketCount = tickets.length;
@@ -45,14 +53,14 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
 </body>
 </html>`;
 
-  await resend.emails.send({
-    from: process.env.RESEND_FROM || 'onboarding@resend.dev',
+  await transporter.sendMail({
+    from: `"Sistema de Entradas" <${process.env.GMAIL_USER}>`,
     to,
     subject: `Tus ${plural} (${ticketCount}) — ${buyerName}`,
     html,
     attachments: pdfAttachments.map((pdf, i) => ({
       filename: `entrada-${i + 1}.pdf`,
-      content: pdf.toString('base64'),
+      content: pdf,
     })),
   });
 }

@@ -47,7 +47,7 @@ export default function ScannerPage() {
     }
   };
 
-  // Auto-reset after 2 seconds — camera keeps running, just ignore scans during display
+  // Auto-reset after 2 seconds — camera keeps running throughout
   useEffect(() => {
     if (!result) return;
     const timer = setTimeout(() => {
@@ -73,27 +73,41 @@ export default function ScannerPage() {
         </button>
       </div>
 
-      {/* Pantalla inicial (sin cámara) */}
-      {!started && !error && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <div style={{ fontSize: 64 }}>🎟️</div>
-          <p style={{ color: '#9ca3af', fontSize: 16, margin: 0 }}>Listo para escanear</p>
-          <button onClick={startCamera} style={btnStyle('#6d28d9')}>Iniciar cámara</button>
-        </div>
-      )}
+      {/* Contenedor principal — qr-reader SIEMPRE en el DOM para que html5-qrcode pueda inicializar */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16, position: 'relative' }}>
 
-      {/* Error de cámara */}
-      {error && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <p style={{ color: '#f87171', fontSize: 15 }}>{error}</p>
-          <button onClick={startCamera} style={btnStyle('#6d28d9')}>Reintentar</button>
-        </div>
-      )}
+        {/* Pantalla inicial encima del div de cámara */}
+        {!started && !error && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            background: '#0f0f1a',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 16,
+          }}>
+            <div style={{ fontSize: 64 }}>🎟️</div>
+            <p style={{ color: '#9ca3af', fontSize: 16, margin: 0 }}>Listo para escanear</p>
+            <button onClick={startCamera} style={btnStyle('#6d28d9')}>Iniciar cámara</button>
+          </div>
+        )}
 
-      {/* Contenedor de la cámara — siempre en DOM cuando started */}
-      <div style={{ display: started ? 'flex' : 'none', flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        {/* Error de cámara */}
+        {error && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            background: '#0f0f1a',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 16,
+          }}>
+            <p style={{ color: '#f87171', fontSize: 15 }}>{error}</p>
+            <button onClick={startCamera} style={btnStyle('#6d28d9')}>Reintentar</button>
+          </div>
+        )}
+
+        {/* div de cámara — siempre en el DOM */}
         <div id="qr-reader" style={{ width: '100%', maxWidth: 340, borderRadius: 16, overflow: 'hidden' }} />
-        <p style={{ color: '#9ca3af', fontSize: 14, marginTop: 12 }}>Apuntá la cámara al código QR</p>
+        {started && (
+          <p style={{ color: '#9ca3af', fontSize: 14, marginTop: 12 }}>Apuntá la cámara al código QR</p>
+        )}
       </div>
 
       {/* Overlay de resultado — cubre toda la pantalla, la cámara sigue corriendo debajo */}

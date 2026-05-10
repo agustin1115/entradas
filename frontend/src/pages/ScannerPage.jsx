@@ -61,6 +61,17 @@ export default function ScannerPage() {
     return () => clearTimeout(timer);
   }, [result]);
 
+  // Pantalla de resultado: ocupa todo
+  if (result) return <ResultScreen result={result} />;
+
+  // Pantalla de procesando: ocupa todo
+  if (processing) return (
+    <div style={s.fullScreen('#0f0f1a')}>
+      <div style={s.spinner} />
+      <p style={{ color: '#9ca3af', fontSize: 18, marginTop: 20 }}>Validando...</p>
+    </div>
+  );
+
   return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -70,7 +81,7 @@ export default function ScannerPage() {
 
       <div style={s.content}>
 
-        {!scanning && !result && !processing && !error && (
+        {!scanning && !error && (
           <div style={s.idle}>
             <div style={s.idleIcon}>🎟️</div>
             <p style={s.idleText}>Listo para escanear</p>
@@ -91,15 +102,6 @@ export default function ScannerPage() {
           </div>
         )}
 
-        {processing && (
-          <div style={s.processingWrap}>
-            <div style={s.spinner} />
-            <p style={s.processingText}>Validando...</p>
-          </div>
-        )}
-
-        {result && <ResultOverlay result={result} />}
-
         {error && (
           <div style={s.errorCard}>
             <p style={s.errorMsg}>{error}</p>
@@ -114,7 +116,7 @@ export default function ScannerPage() {
   );
 }
 
-function ResultOverlay({ result }) {
+function ResultScreen({ result }) {
   const isValid = result.valid;
   const [progress, setProgress] = useState(100);
 
@@ -126,34 +128,32 @@ function ResultOverlay({ result }) {
   }, []);
 
   return (
-    <div style={{ ...s.overlay, background: isValid ? '#052e16' : '#450a0a' }}>
-      <div style={{ ...s.bigIcon, color: isValid ? '#4ade80' : '#f87171' }}>
+    <div style={s.fullScreen(isValid ? '#052e16' : '#450a0a')}>
+      <div style={{ fontSize: 130, fontWeight: 900, lineHeight: 1, color: isValid ? '#4ade80' : '#f87171' }}>
         {isValid ? '✓' : '✗'}
       </div>
-
-      <h2 style={{ ...s.overlayTitle, color: isValid ? '#4ade80' : '#f87171' }}>
-        {isValid ? 'ENTRADA VÁLIDA' : 'ENTRADA INVÁLIDA'}
+      <h2 style={{ fontSize: 28, fontWeight: 800, margin: '12px 0', color: isValid ? '#4ade80' : '#f87171', letterSpacing: 1 }}>
+        {isValid ? 'VÁLIDA' : 'INVÁLIDA'}
       </h2>
-
       {isValid ? (
         <>
-          <p style={s.overlayName}>{result.ticket?.buyerName}</p>
-          <p style={s.overlaySub}>
+          <p style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: '4px 0' }}>{result.ticket?.buyerName}</p>
+          <p style={{ fontSize: 15, color: '#86efac', margin: 0 }}>
             Entrada {result.ticket?.ticketNumber} de {result.ticket?.totalTickets}
           </p>
         </>
       ) : (
-        <p style={s.overlayReason}>{result.reason}</p>
+        <p style={{ fontSize: 17, color: '#fca5a5', margin: 0, textAlign: 'center', padding: '0 32px' }}>{result.reason}</p>
       )}
-
-      <div style={s.progressBar}>
-        <div style={{ ...s.progressFill, width: `${progress}%`, background: isValid ? '#4ade80' : '#f87171' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, background: 'rgba(255,255,255,0.1)' }}>
+        <div style={{ height: '100%', width: `${progress}%`, background: isValid ? '#4ade80' : '#f87171', transition: 'width 0.1s linear' }} />
       </div>
     </div>
   );
 }
 
 const s = {
+  fullScreen: (bg) => ({ width: '100vw', height: '100vh', background: bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', gap: 8 }),
   wrap: { minHeight: '100vh', background: '#0f0f1a', display: 'flex', flexDirection: 'column' },
   header: { background: '#1a0533', color: '#fff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' },
@@ -170,14 +170,6 @@ const s = {
   processingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 },
   processingText: { color: '#9ca3af', fontSize: 16 },
   spinner: { width: 48, height: 48, border: '4px solid #374151', borderTop: '4px solid #6d28d9', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-  overlay: { position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100, gap: 12 },
-  bigIcon: { fontSize: 120, fontWeight: 900, lineHeight: 1 },
-  overlayTitle: { fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: 1 },
-  overlayName: { fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 },
-  overlaySub: { fontSize: 15, color: '#86efac', margin: 0 },
-  overlayReason: { fontSize: 17, color: '#fca5a5', margin: 0, textAlign: 'center', padding: '0 32px' },
-  progressBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 5, background: 'rgba(255,255,255,0.1)' },
-  progressFill: { height: '100%', transition: 'width 0.1s linear' },
   errorCard: { textAlign: 'center' },
   errorMsg: { color: '#f87171', fontSize: 15, marginBottom: 16 },
 };

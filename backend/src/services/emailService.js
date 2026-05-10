@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
 
 const oauth2Client = new google.auth.OAuth2(
@@ -6,22 +5,35 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GMAIL_CLIENT_SECRET,
   'https://developers.google.com/oauthplayground'
 );
-
 oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
 
-async function createTransporter() {
-  const { token } = await oauth2Client.getAccessToken();
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: process.env.GMAIL_USER,
-      clientId: process.env.GMAIL_CLIENT_ID,
-      clientSecret: process.env.GMAIL_CLIENT_SECRET,
-      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-      accessToken: token,
-    },
-  });
+function buildMime({ from, to, subject, html, attachments }) {
+  const boundary = `boundary_${Date.now()}`;
+  const lines = [];
+
+  lines.push(`From: ${from}`);
+  lines.push(`To: ${to}`);
+  lines.push(`Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`);
+  lines.push('MIME-Version: 1.0');
+  lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  lines.push('');
+  lines.push(`--${boundary}`);
+  lines.push('Content-Type: text/html; charset=UTF-8');
+  lines.push('Content-Transfer-Encoding: base64');
+  lines.push('');
+  lines.push(Buffer.from(html).toString('base64'));
+
+  for (const att of attachments) {
+    lines.push(`--${boundary}`);
+    lines.push(`Content-Type: application/pdf; name="${att.filename}"`);
+    lines.push('Content-Transfer-Encoding: base64');
+    lines.push(`Content-Disposition: attachment; filename="${att.filename}"`);
+    lines.push('');
+    lines.push(att.content.toString('base64'));
+  }
+
+  lines.push(`--${boundary}--`);
+  return lines.join('\r\n');
 }
 
 export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttachments }) {
@@ -47,11 +59,9 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
   <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
     <h1 style="color:#111;font-size:24px;margin:0 0 4px;">¡Tu ${plural} ${ticketCount > 1 ? 'están' : 'está'} lista!</h1>
     <p style="color:#555;font-size:15px;margin:0 0 24px;">Hola <strong>${buyerName}</strong>, confirmamos tu compra de <strong>${ticketCount} ${plural}</strong>.</p>
-
     <div style="background:#f5f5f5;border-radius:8px;padding:16px;text-align:center;margin-bottom:24px;">
       ${qrImagesHtml}
     </div>
-
     <div style="background:#fffbea;border:1px solid #f0d060;border-radius:8px;padding:14px;margin-bottom:24px;">
       <p style="margin:0;font-size:13px;color:#7a6000;">
         <strong>Instrucciones:</strong> Presentá cada código QR en la entrada del evento.
@@ -59,7 +69,6 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
         También encontrás los PDFs adjuntos como respaldo.
       </p>
     </div>
-
     <p style="color:#aaa;font-size:11px;text-align:center;margin:0;">
       ID de compra: ${saleId.slice(0, 8).toUpperCase()}
     </p>
@@ -67,8 +76,7 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
 </body>
 </html>`;
 
-  const transporter = await createTransporter();
-  await transporter.sendMail({
+  const raw = buildMime({
     from: `"Sistema de Entradas" <${process.env.GMAIL_USER}>`,
     to,
     subject: `Tus ${plural} (${ticketCount}) — ${buyerName}`,
@@ -77,5 +85,11 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
       filename: `entrada-${i + 1}.pdf`,
       content: pdf,
     })),
+  });
+
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw: Buffer.from(raw).toString('base64url') },
   });
 }

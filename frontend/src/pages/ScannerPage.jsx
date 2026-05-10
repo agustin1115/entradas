@@ -6,7 +6,8 @@ import { useAuth } from '../hooks/useAuth.jsx';
 export default function ScannerPage() {
   const { auth, logout } = useAuth();
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState(null); // { valid, ticket?, reason? }
+  const [processing, setProcessing] = useState(false);
+  const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const scannerRef = useRef(null);
   const html5QrRef = useRef(null);
@@ -14,6 +15,7 @@ export default function ScannerPage() {
   const startScanner = async () => {
     setResult(null);
     setError('');
+    setProcessing(false);
     setScanning(true);
   };
 
@@ -28,14 +30,21 @@ export default function ScannerPage() {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decodedText) => {
-          // Pausar scanner mientras procesamos
           await qrScanner.stop().catch(() => {});
           setScanning(false);
-          handleScan(decodedText);
+          setProcessing(true);
+          try {
+            const data = await api.scanTicket(decodedText, auth.token);
+            setResult(data);
+          } catch (err) {
+            setResult({ valid: false, reason: err.message });
+          } finally {
+            setProcessing(false);
+          }
         },
-        () => {} // silence errors
+        () => {}
       )
-      .catch((err) => {
+      .catch(() => {
         setScanning(false);
         setError('No se pudo acceder a la cámara. Verificá los permisos.');
       });
@@ -45,30 +54,27 @@ export default function ScannerPage() {
     };
   }, [scanning]);
 
-  const handleScan = async (qrContent) => {
-    try {
-      const data = await api.scanTicket(qrContent, auth.token);
-      setResult(data);
-    } catch (err) {
-      setResult({ valid: false, reason: err.message });
-    }
-  };
+  // Auto-volver a la cámara después de 2 segundos
+  useEffect(() => {
+    if (!result) return;
+    const timer = setTimeout(() => startScanner(), 2000);
+    return () => clearTimeout(timer);
+  }, [result]);
 
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <h1 style={s.headerTitle}>📷 Scanner</h1>
+        <h1 style={s.headerTitle}>Scanner</h1>
         <button onClick={logout} style={s.logoutBtn}>Salir</button>
       </div>
 
       <div style={s.content}>
-        {!scanning && !result && (
+
+        {!scanning && !result && !processing && !error && (
           <div style={s.idle}>
             <div style={s.idleIcon}>🎟️</div>
             <p style={s.idleText}>Listo para escanear</p>
-            <button onClick={startScanner} style={s.scanBtn}>
-              Iniciar cámara
-            </button>
+            <button onClick={startScanner} style={s.scanBtn}>Iniciar cámara</button>
           </div>
         )}
 
@@ -85,12 +91,14 @@ export default function ScannerPage() {
           </div>
         )}
 
-        {result && (
-          <ResultCard
-            result={result}
-            onNext={() => { setResult(null); startScanner(); }}
-          />
+        {processing && (
+          <div style={s.processingWrap}>
+            <div style={s.spinner} />
+            <p style={s.processingText}>Validando...</p>
+          </div>
         )}
+
+        {result && <ResultOverlay result={result} />}
 
         {error && (
           <div style={s.errorCard}>
@@ -100,32 +108,47 @@ export default function ScannerPage() {
             </button>
           </div>
         )}
+
       </div>
     </div>
   );
 }
 
-function ResultCard({ result, onNext }) {
+function ResultOverlay({ result }) {
   const isValid = result.valid;
+  const [progress, setProgress] = useState(100);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress((p) => Math.max(0, p - 5));
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div style={{ ...s.resultCard, background: isValid ? '#f0fdf4' : '#fef2f2', borderColor: isValid ? '#86efac' : '#fca5a5' }}>
-      <div style={s.resultIcon}>{isValid ? '✅' : '❌'}</div>
-      <h2 style={{ ...s.resultTitle, color: isValid ? '#15803d' : '#dc2626' }}>
+    <div style={{ ...s.overlay, background: isValid ? '#052e16' : '#450a0a' }}>
+      <div style={{ ...s.bigIcon, color: isValid ? '#4ade80' : '#f87171' }}>
+        {isValid ? '✓' : '✗'}
+      </div>
+
+      <h2 style={{ ...s.overlayTitle, color: isValid ? '#4ade80' : '#f87171' }}>
         {isValid ? 'ENTRADA VÁLIDA' : 'ENTRADA INVÁLIDA'}
       </h2>
+
       {isValid ? (
         <>
-          <p style={s.resultName}>{result.ticket.buyerName}</p>
-          <p style={s.resultSub}>
-            Entrada {result.ticket.ticketNumber} de {result.ticket.totalTickets}
+          <p style={s.overlayName}>{result.ticket?.buyerName}</p>
+          <p style={s.overlaySub}>
+            Entrada {result.ticket?.ticketNumber} de {result.ticket?.totalTickets}
           </p>
         </>
       ) : (
-        <p style={s.resultReason}>{result.reason}</p>
+        <p style={s.overlayReason}>{result.reason}</p>
       )}
-      <button onClick={onNext} style={{ ...s.scanBtn, marginTop: 20, background: isValid ? '#16a34a' : '#dc2626' }}>
-        Escanear siguiente
-      </button>
+
+      <div style={s.progressBar}>
+        <div style={{ ...s.progressFill, width: `${progress}%`, background: isValid ? '#4ade80' : '#f87171' }} />
+      </div>
     </div>
   );
 }
@@ -135,7 +158,7 @@ const s = {
   header: { background: '#1a0533', color: '#fff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' },
   logoutBtn: { background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13 },
-  content: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
+  content: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 },
   idle: { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
   idleIcon: { fontSize: 64 },
   idleText: { color: '#9ca3af', fontSize: 16 },
@@ -144,12 +167,17 @@ const s = {
   qrReader: { width: '100%', borderRadius: 16, overflow: 'hidden' },
   scanHint: { color: '#9ca3af', fontSize: 14, textAlign: 'center' },
   cancelBtn: { padding: '10px 24px', background: 'transparent', color: '#9ca3af', border: '1px solid #374151', borderRadius: 10, cursor: 'pointer', fontSize: 14 },
-  resultCard: { width: '100%', maxWidth: 360, borderRadius: 16, padding: 28, border: '2px solid', textAlign: 'center' },
-  resultIcon: { fontSize: 56, marginBottom: 8 },
-  resultTitle: { fontSize: 22, fontWeight: 800, margin: '0 0 12px', letterSpacing: 0.5 },
-  resultName: { fontSize: 20, fontWeight: 700, color: '#111', margin: '0 0 4px' },
-  resultSub: { fontSize: 14, color: '#6b7280', margin: 0 },
-  resultReason: { fontSize: 16, color: '#dc2626', margin: 0, fontWeight: 500 },
+  processingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 },
+  processingText: { color: '#9ca3af', fontSize: 16 },
+  spinner: { width: 48, height: 48, border: '4px solid #374151', borderTop: '4px solid #6d28d9', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+  overlay: { position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100, gap: 12 },
+  bigIcon: { fontSize: 120, fontWeight: 900, lineHeight: 1 },
+  overlayTitle: { fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: 1 },
+  overlayName: { fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 },
+  overlaySub: { fontSize: 15, color: '#86efac', margin: 0 },
+  overlayReason: { fontSize: 17, color: '#fca5a5', margin: 0, textAlign: 'center', padding: '0 32px' },
+  progressBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 5, background: 'rgba(255,255,255,0.1)' },
+  progressFill: { height: '100%', transition: 'width 0.1s linear' },
   errorCard: { textAlign: 'center' },
   errorMsg: { color: '#f87171', fontSize: 15, marginBottom: 16 },
 };

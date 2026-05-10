@@ -1,14 +1,28 @@
 import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GMAIL_CLIENT_ID,
+  process.env.GMAIL_CLIENT_SECRET,
+  'https://developers.google.com/oauthplayground'
+);
+
+oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+
+async function createTransporter() {
+  const { token } = await oauth2Client.getAccessToken();
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user: process.env.GMAIL_USER,
+      clientId: process.env.GMAIL_CLIENT_ID,
+      clientSecret: process.env.GMAIL_CLIENT_SECRET,
+      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+      accessToken: token,
+    },
+  });
+}
 
 export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttachments }) {
   const ticketCount = tickets.length;
@@ -53,6 +67,7 @@ export async function sendTicketEmail({ to, buyerName, tickets, saleId, pdfAttac
 </body>
 </html>`;
 
+  const transporter = await createTransporter();
   await transporter.sendMail({
     from: `"Sistema de Entradas" <${process.env.GMAIL_USER}>`,
     to,

@@ -2,6 +2,18 @@ import { useState } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 
+const SELLERS = [
+  'Agus Hautcoeur', 'Bauti Briscioli', 'Cami Briscioli', 'Cami Pariente', 'Cami Svendsen',
+  'Cande Stoisa', 'Caro Reymundi', 'Cata Gari', 'Cata Schafer', 'Chompy',
+  'Clari PP', 'Cuba', 'Delfi Garcia', 'Dexter', 'Eze',
+  'Fede', 'Ferri', 'Franco Rubino', 'German', 'Giri',
+  'Greta', 'Guada', 'Guido', 'Juampi', 'Juani Sara xd',
+  'Juli K', 'Julibu', 'Lu Diaz', 'Maga', 'Mai',
+  'Marti Telechea', 'Mate', 'Mica Azzari', 'Mily Rizzo', 'Pelado',
+  'Rave', 'Santi Bianchi', 'Santi Briscioli', 'Trini', 'Valen Briscioli',
+  'Valen Guzman', 'Vicky',
+];
+
 export default function SellerPage() {
   const { auth, logout } = useAuth();
   const [form, setForm] = useState({ buyerName: '', buyerEmail: '', sellerName: '', quantity: 1 });
@@ -92,7 +104,20 @@ export default function SellerPage() {
           <input style={s.input} type="email" value={form.buyerEmail} onChange={set('buyerEmail')} placeholder="juan@email.com" />
         </Field>
         <Field label="Nombre del vendedor" required>
-          <input style={s.input} value={form.sellerName} onChange={set('sellerName')} placeholder="Tu nombre" />
+          <input
+            style={s.input}
+            value={form.sellerName}
+            onChange={set('sellerName')}
+            list="sellers-list"
+            placeholder="Escribí tu nombre"
+            autoComplete="off"
+          />
+          <datalist id="sellers-list">
+            {SELLERS.map((name) => <option key={name} value={name} />)}
+          </datalist>
+          {form.sellerName.trim() && !SELLERS.includes(form.sellerName.trim()) && (
+            <span style={s.fieldError}>Ese nombre no está en la lista de vendedores</span>
+          )}
         </Field>
         <Field label="Cantidad de entradas">
           <div style={s.qtyRow}>
@@ -104,10 +129,10 @@ export default function SellerPage() {
         <button
           style={s.btn}
           onClick={() => {
-            if (!form.buyerName.trim() || !form.buyerEmail.trim() || !form.sellerName.trim()) return;
+            if (!form.buyerName.trim() || !form.buyerEmail.trim() || !SELLERS.includes(form.sellerName.trim())) return;
             setStep('confirm');
           }}
-          disabled={!form.buyerName.trim() || !form.buyerEmail.trim() || !form.sellerName.trim()}
+          disabled={!form.buyerName.trim() || !form.buyerEmail.trim() || !SELLERS.includes(form.sellerName.trim())}
         >
           Continuar →
         </button>
@@ -172,4 +197,5 @@ const s = {
   successEmail: { fontSize: 15, color: '#6d28d9', fontWeight: 600, margin: '0 0 16px' },
   warn: { background: '#fffbea', border: '1px solid #fcd34d', borderRadius: 8, padding: 12, fontSize: 13, color: '#92400e', marginTop: 8 },
   errorMsg: { color: '#dc2626', textAlign: 'center', fontSize: 15, padding: 16, background: '#fef2f2', borderRadius: 10 },
+  fieldError: { fontSize: 12, color: '#dc2626', marginTop: 2 },
 };

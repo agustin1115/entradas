@@ -90,24 +90,50 @@ function StatsView({ stats, pct }) {
 
 function SalesView({ sales }) {
   if (!sales.length) return <p style={{ color: '#9ca3af', textAlign: 'center', marginTop: 40 }}>No hay ventas registradas</p>;
+
+  const byVendedor = {};
+  sales.forEach((sale) => {
+    const name = sale.seller_name || 'Sin vendedor';
+    if (!byVendedor[name]) byVendedor[name] = { ventas: 0, entradas: 0 };
+    byVendedor[name].ventas++;
+    byVendedor[name].entradas += Number(sale.total_tickets);
+  });
+  const vendedores = Object.entries(byVendedor).sort((a, b) => b[1].entradas - a[1].entradas);
+
   return (
-    <div style={s.salesList}>
-      {sales.map((sale) => (
-        <div key={sale.id} style={s.saleCard}>
-          <div style={s.saleTop}>
-            <span style={s.saleName}>{sale.buyer_name}</span>
-            <span style={s.saleBadge}>{sale.total_tickets} entradas</span>
+    <div>
+      <div style={s.sellerSection}>
+        <p style={s.sellerTitle}>Por vendedor</p>
+        {vendedores.map(([name, data]) => (
+          <div key={name} style={s.sellerRow}>
+            <span style={s.sellerName}>{name}</span>
+            <div style={s.sellerStats}>
+              <span style={s.sellerBadge}>{data.entradas} entradas</span>
+              <span style={s.sellerSub}>{data.ventas} {data.ventas === 1 ? 'venta' : 'ventas'}</span>
+            </div>
           </div>
-          <div style={s.saleBottom}>
-            <span style={s.saleEmail}>{sale.buyer_email}</span>
-            <span style={s.saleUsed}>{sale.used_tickets}/{sale.total_tickets} usadas</span>
+        ))}
+      </div>
+
+      <p style={s.sellerTitle}>Detalle de ventas</p>
+      <div style={s.salesList}>
+        {sales.map((sale) => (
+          <div key={sale.id} style={s.saleCard}>
+            <div style={s.saleTop}>
+              <span style={s.saleName}>{sale.buyer_name}</span>
+              <span style={s.saleBadge}>{sale.total_tickets} entradas</span>
+            </div>
+            <div style={s.saleBottom}>
+              <span style={s.saleEmail}>{sale.buyer_email}</span>
+              <span style={s.saleUsed}>{sale.used_tickets}/{sale.total_tickets} usadas</span>
+            </div>
+            <div style={s.saleMeta}>
+              <span style={s.saleSeller}>Vendedor: {sale.seller_name}</span>
+              <span style={s.saleDate}>{new Date(sale.created_at).toLocaleDateString('es-AR')}</span>
+            </div>
           </div>
-          <div style={s.saleMeta}>
-            <span style={s.saleSeller}>Vendedor: {sale.seller_name}</span>
-            <span style={s.saleDate}>{new Date(sale.created_at).toLocaleDateString('es-AR')}</span>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -134,6 +160,13 @@ const s = {
   progressPct: { fontSize: 13, fontWeight: 700, color: '#6d28d9' },
   progressTrack: { height: 12, background: '#e5e7eb', borderRadius: 6, overflow: 'hidden' },
   progressBar: { height: '100%', background: '#6d28d9', borderRadius: 6, transition: 'width 0.5s ease' },
+  sellerSection: { background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
+  sellerTitle: { fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' },
+  sellerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f3f4f6' },
+  sellerName: { fontSize: 14, fontWeight: 600, color: '#111' },
+  sellerStats: { display: 'flex', alignItems: 'center', gap: 8 },
+  sellerBadge: { background: '#f3f0ff', color: '#6d28d9', fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 20 },
+  sellerSub: { fontSize: 12, color: '#9ca3af' },
   salesList: { display: 'flex', flexDirection: 'column', gap: 10 },
   saleCard: { background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
   saleTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },

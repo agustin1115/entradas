@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 
+const TOTAL_CAPACITY = 800;
+
 export default function AdminPage() {
   const { auth, logout } = useAuth();
   const [stats, setStats] = useState(null);
@@ -27,7 +29,7 @@ export default function AdminPage() {
 
   useEffect(() => { load(); }, []);
 
-  const pct = stats ? Math.round((Number(stats.used) / Math.max(Number(stats.total), 1)) * 100) : 0;
+  const pct = stats ? Math.round((Number(stats.used) / TOTAL_CAPACITY) * 100) : 0;
 
   return (
     <div style={s.wrap}>
@@ -84,8 +86,8 @@ function StatsView({ stats, pct }) {
           <div style={{ ...s.progressBar, width: `${pct}%` }} />
         </div>
         <div style={s.progressFooter}>
-          <span style={s.progressSub}>{stats.used} usadas de {stats.total}</span>
-          <span style={s.progressRemain}>Quedan <strong>{stats.valid}</strong></span>
+          <span style={s.progressSub}>{stats.used} usadas de {TOTAL_CAPACITY}</span>
+          <span style={s.progressRemain}>Quedan <strong>{TOTAL_CAPACITY - Number(stats.used)}</strong></span>
         </div>
       </div>
     </div>
@@ -93,7 +95,13 @@ function StatsView({ stats, pct }) {
 }
 
 function SalesView({ sales }) {
+  const [query, setQuery] = useState('');
+
   if (!sales.length) return <p style={{ color: '#9ca3af', textAlign: 'center', marginTop: 40 }}>No hay ventas registradas</p>;
+
+  const filtered = query.trim()
+    ? sales.filter((sale) => sale.buyer_name.toLowerCase().includes(query.toLowerCase()))
+    : sales;
 
   const byVendedor = {};
   sales.forEach((sale) => {
@@ -120,8 +128,17 @@ function SalesView({ sales }) {
       </div>
 
       <p style={s.sellerTitle}>Detalle de ventas</p>
+      <input
+        style={s.searchInput}
+        placeholder="Buscar por nombre de comprador..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {filtered.length === 0 && (
+        <p style={{ color: '#9ca3af', textAlign: 'center', marginTop: 16, fontSize: 14 }}>Sin resultados</p>
+      )}
       <div style={s.salesList}>
-        {sales.map((sale) => (
+        {filtered.map((sale) => (
           <div key={sale.id} style={s.saleCard}>
             <div style={s.saleTop}>
               <span style={s.saleName}>{sale.buyer_name}</span>
@@ -174,6 +191,7 @@ const s = {
   sellerStats: { display: 'flex', alignItems: 'center', gap: 8 },
   sellerBadge: { background: '#f3f0ff', color: '#6d28d9', fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 20 },
   sellerSub: { fontSize: 12, color: '#9ca3af' },
+  searchInput: { width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 14, marginBottom: 12, boxSizing: 'border-box', outline: 'none' },
   salesList: { display: 'flex', flexDirection: 'column', gap: 10 },
   saleCard: { background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
   saleTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },

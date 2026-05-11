@@ -83,6 +83,10 @@ function StatsView({ stats, pct }) {
         <div style={s.progressTrack}>
           <div style={{ ...s.progressBar, width: `${pct}%` }} />
         </div>
+        <div style={s.progressFooter}>
+          <span style={s.progressSub}>{stats.used} usadas de {stats.total}</span>
+          <span style={s.progressRemain}>Quedan <strong>{stats.valid}</strong></span>
+        </div>
       </div>
     </div>
   );
@@ -160,6 +164,9 @@ const s = {
   progressPct: { fontSize: 13, fontWeight: 700, color: '#6d28d9' },
   progressTrack: { height: 12, background: '#e5e7eb', borderRadius: 6, overflow: 'hidden' },
   progressBar: { height: '100%', background: '#6d28d9', borderRadius: 6, transition: 'width 0.5s ease' },
+  progressFooter: { display: 'flex', justifyContent: 'space-between', marginTop: 8 },
+  progressSub: { fontSize: 12, color: '#9ca3af' },
+  progressRemain: { fontSize: 12, color: '#16a34a' },
   sellerSection: { background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
   sellerTitle: { fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' },
   sellerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f3f4f6' },

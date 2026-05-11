@@ -29,7 +29,7 @@ export default function AdminPage() {
 
   useEffect(() => { load(); }, []);
 
-  const pct = stats ? Math.round((Number(stats.used) / TOTAL_CAPACITY) * 100) : 0;
+  const pct = stats ? Math.round((Number(stats.total) / TOTAL_CAPACITY) * 100) : 0;
 
   return (
     <div style={s.wrap}>
@@ -79,15 +79,15 @@ function StatsView({ stats, pct }) {
       </div>
       <div style={s.progressWrap}>
         <div style={s.progressHeader}>
-          <span style={s.progressLabel}>Entradas usadas</span>
+          <span style={s.progressLabel}>Entradas vendidas</span>
           <span style={s.progressPct}>{pct}%</span>
         </div>
         <div style={s.progressTrack}>
           <div style={{ ...s.progressBar, width: `${pct}%` }} />
         </div>
         <div style={s.progressFooter}>
-          <span style={s.progressSub}>{stats.used} usadas de {TOTAL_CAPACITY}</span>
-          <span style={s.progressRemain}>Quedan <strong>{TOTAL_CAPACITY - Number(stats.used)}</strong></span>
+          <span style={s.progressSub}>{stats.total} vendidas · {stats.used} usadas en puerta</span>
+          <span style={s.progressRemain}>Quedan <strong>{TOTAL_CAPACITY - Number(stats.total)}</strong></span>
         </div>
       </div>
     </div>
